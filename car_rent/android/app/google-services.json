@@ -1,0 +1,67 @@
+{
+  "project_info": {
+    "project_number": "532675681533",
+    "project_id": "rideswift-165ba",
+    "storage_bucket": "rideswift-165ba.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:532675681533:android:4d8018f4dc0dc1b6bab294",
+        "android_client_info": {
+          "package_name": "com.example.car_rent"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBjdO5xpeGFPjWaL5X2Psr83Xl7I21TpJc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:532675681533:android:86da176be640b449bab294",
+        "android_client_info": {
+          "package_name": "com.example.cravechronicles"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBjdO5xpeGFPjWaL5X2Psr83Xl7I21TpJc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:532675681533:android:3b7d128d025f5c32bab294",
+        "android_client_info": {
+          "package_name": "com.example.rideswift"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBjdO5xpeGFPjWaL5X2Psr83Xl7I21TpJc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
