@@ -1,6 +1,11 @@
 import 'package:car_rent/authpag/authscreen.dart';
 import 'package:car_rent/firebase_options.dart';
+import 'package:car_rent/pages/adminpage/bookingm/bookingmanagement.dart';
+import 'package:car_rent/pages/adminpage/vehicles/managevehicle.dart';
+import 'package:car_rent/pages/userpage/booking/confirmbooking.dart';
+import 'package:car_rent/pages/userpage/booking/detailcar.dart';
 import 'package:car_rent/pages/userpage/homescreen.dart';
+import 'package:car_rent/pages/userpage/profile/profile.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 void main() async {
@@ -16,10 +21,14 @@ void main() async {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
+  
 
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(home: CarRentHomeScreen());
+    
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: VehicleManagementApp());
   }
 }
