@@ -1,5 +1,6 @@
 import 'package:car_rent/authpag/authscreen.dart';
 import 'package:car_rent/firebase_options.dart';
+import 'package:car_rent/kling/uploadimage.dart';
 import 'package:car_rent/pages/adminpage/bookingm/bookingmanagement.dart';
 import 'package:car_rent/pages/adminpage/vehicles/addvehicle.dart';
 import 'package:car_rent/pages/adminpage/vehicles/managevehicle.dart';
@@ -30,6 +31,6 @@ class MyApp extends StatelessWidget {
     
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: AddNewVehicleScreen());
+      home: CarRentHomeScreen());
   }
 }
