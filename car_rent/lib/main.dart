@@ -1,6 +1,7 @@
 import 'package:car_rent/authpag/authscreen.dart';
 import 'package:car_rent/firebase_options.dart';
 import 'package:car_rent/pages/adminpage/bookingm/bookingmanagement.dart';
+import 'package:car_rent/pages/adminpage/vehicles/addvehicle.dart';
 import 'package:car_rent/pages/adminpage/vehicles/managevehicle.dart';
 import 'package:car_rent/pages/userpage/booking/confirmbooking.dart';
 import 'package:car_rent/pages/userpage/booking/detailcar.dart';
@@ -29,6 +30,6 @@ class MyApp extends StatelessWidget {
     
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: VehicleManagementApp());
+      home: AddNewVehicleScreen());
   }
 }

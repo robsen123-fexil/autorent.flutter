@@ -1,7 +1,28 @@
+import 'package:car_rent/pages/userpage/booking/confirmbooking.dart';
 import 'package:flutter/material.dart';
 
 class VehicleDetailScreen extends StatelessWidget {
-  const VehicleDetailScreen({super.key});
+  final String vehicleId;
+  final String name;
+  final String type;
+  final String imageUrl;
+  final String pricePerDay;
+  final String status;
+
+  final Map<String, String> specs;
+  final List<String> features;
+
+  const VehicleDetailScreen({
+    super.key,
+    required this.vehicleId,
+    required this.name,
+    required this.type,
+    required this.imageUrl,
+    required this.pricePerDay,
+    required this.status,
+    required this.specs,
+    required this.features,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -9,10 +30,7 @@ class VehicleDetailScreen extends StatelessWidget {
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         backgroundColor: Colors.white,
-        title: const Text(
-          "Toyota Land Cruiser",
-          style: TextStyle(color: Colors.black),
-        ),
+        title: Text(name, style: const TextStyle(color: Colors.black)),
         iconTheme: const IconThemeData(color: Colors.black),
         elevation: 0,
       ),
@@ -21,26 +39,21 @@ class VehicleDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Vehicle image
             Container(
               height: 200,
               decoration: BoxDecoration(
-                color: Colors.grey[300],
                 borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Center(
-                child: Text("800 × 500", style: TextStyle(fontSize: 18)),
+                image: DecorationImage(
+                  image: NetworkImage(imageUrl),
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
             const SizedBox(height: 16),
 
-            _buildSpec("Seats", "7 People"),
-            _buildSpec("Transmission", "Automatic"),
-            _buildSpec("Fuel", "Diesel"),
-            _buildSpec("Year", "2022"),
-            _buildSpec("Mileage", "45,000 km"),
-            _buildSpec("Engine", "4.5L V8"),
-            _buildSpec("Color", "Pearl White"),
-            _buildSpec("Plate", "AA-12345"),
+            // Specs
+            ...specs.entries.map((e) => _buildSpec(e.key, e.value)).toList(),
 
             const SizedBox(height: 16),
             const Text(
@@ -48,29 +61,23 @@ class VehicleDetailScreen extends StatelessWidget {
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const SizedBox(height: 8),
-            _buildFeature("Air Conditioning"),
-            _buildFeature("Automatic"),
-            _buildFeature("Parking Sensors"),
-            _buildFeature("Backup Camera"),
-            _buildFeature("Leather Seats"),
-            _buildFeature("Navigation System"),
-            _buildFeature("Sunroof"),
-            _buildFeature("4×4"),
+            ...features.map(_buildFeature).toList(),
 
             const SizedBox(height: 24),
+            // Price and availability
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
+                  children: [
+                    const Text(
                       "Price per day",
                       style: TextStyle(fontSize: 14, color: Colors.grey),
                     ),
                     Text(
-                      "ETB 5000",
-                      style: TextStyle(
+                      "ETB $pricePerDay",
+                      style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
@@ -83,20 +90,25 @@ class VehicleDetailScreen extends StatelessWidget {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.green[100],
+                    color:
+                        status == "Available"
+                            ? Colors.green[100]
+                            : Colors.red[100],
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Text(
-                    "Available",
+                  child: Text(
+                    status,
                     style: TextStyle(
-                      color: Colors.green,
+                      color: status == "Available" ? Colors.green : Colors.red,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
               ],
             ),
+
             const SizedBox(height: 16),
+            // Reserve button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -107,7 +119,24 @@ class VehicleDetailScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                onPressed: () {},
+                onPressed:
+                    status != "Available"
+                        ? null
+                        : () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (_) => BookingScreen(
+                                    vehicleId: vehicleId,
+                                    vehicleName: name,
+                                    vehicleType: type,
+                                    rate: pricePerDay,
+                                    imageUrl: imageUrl,
+                                  ),
+                            ),
+                          );
+                        },
                 child: const Text(
                   "Reserve Now",
                   style: TextStyle(fontSize: 16),

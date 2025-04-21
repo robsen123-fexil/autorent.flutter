@@ -1,3 +1,5 @@
+import 'package:car_rent/pages/userpage/booking/detailcar.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 class CarRentHomeScreen extends StatelessWidget {
@@ -116,105 +118,154 @@ class CarRentHomeScreen extends StatelessWidget {
   }
 
   Widget _buildCarList() {
-    final cars = [
-      {
-        'name': 'Toyota Corolla',
-        'type': 'Sedan',
-        'price': 'ETB 2500/day',
-        'rating': 4.8,
-      },
-      {
-        'name': 'Toyota Hiace',
-        'type': 'Van',
-        'price': 'ETB 4500/day',
-        'rating': 4.5,
-      },
-    ];
+    return StreamBuilder<QuerySnapshot>(
+      stream:
+          FirebaseFirestore.instance
+              .collection('vehicles')
+              .orderBy('timestamp', descending: true)
+              .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: cars.length,
-      itemBuilder: (context, index) {
-        final car = cars[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                height: 180,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(16),
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(child: Text('No vehicles found.'));
+        }
+
+        final cars = snapshot.data!.docs;
+
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          itemCount: cars.length,
+          itemBuilder: (context, index) {
+            final car = cars[index];
+            final carData = car.data() as Map<String, dynamic>;
+
+            return GestureDetector(
+              onTap: () {
+                // Navigate to VehicleDetailScreen when the car card is tapped
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder:
+                        (_) => VehicleDetailScreen(
+                          vehicleId: car.id,
+                          name: carData['name'] ?? 'Unnamed',
+                          type: carData['type'] ?? 'Type',
+                          imageUrl: carData['image_url'] ?? '',
+                          pricePerDay: carData['rate']?.toString() ?? '0',
+                          status: carData['status'] ?? 'Unknown',
+                          specs: {
+                            'Engine':
+                                'V8', // Example: Replace with actual data from Firestore
+                            'Color': 'Red',
+                            // Add more specs from Firestore as needed
+                          },
+                          features: [
+                            'Air Conditioning', // Example: Replace with actual features from Firestore
+                            'Bluetooth',
+                            // Add more features from Firestore as needed
+                          ],
+                        ),
                   ),
-                  color: Colors.grey[300],
+                );
+              },
+              child: Card(
+                margin: const EdgeInsets.only(bottom: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                child: const Center(
-                  child: Text(
-                    '400 × 300',
-                    style: TextStyle(color: Colors.black45),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: Row(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Column(
+                    Container(
+                      height: 180,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(16),
+                        ),
+                        image:
+                            carData['image_url'] != null
+                                ? DecorationImage(
+                                  image: NetworkImage(carData['image_url']),
+                                  fit: BoxFit.cover,
+                                )
+                                : null,
+                        color: Colors.grey[300],
+                      ),
+                      child:
+                          carData['image_url'] == null
+                              ? const Center(child: Text('No Image'))
+                              : null,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            car['name'] as String,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  carData['name'] ?? 'Unnamed',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                Text(carData['type'] ?? 'Type'),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'ETB ${carData['rate']}/day',
+                                  style: const TextStyle(
+                                    color: Color(0xFF0A2D8F),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          Text(car['type'] as String),
-                          const SizedBox(height: 4),
-                          Text(
-                            car['price'] as String,
-                            style: const TextStyle(
-                              color: Color(0xFF0A2D8F),
-                              fontWeight: FontWeight.bold,
-                            ),
+                          Column(
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.star,
+                                    size: 16,
+                                    color: Colors.black,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '4.5',
+                                  ), // Or get from Firestore if available
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                carData['status'] ?? 'Unknown',
+                                style: TextStyle(
+                                  color:
+                                      carData['status'] == 'Available'
+                                          ? Colors.green
+                                          : Colors.red,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     ),
-                    Column(
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.star,
-                              size: 16,
-                              color: Colors.black,
-                            ),
-                            const SizedBox(width: 4),
-                            Text((car['rating']).toString()),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'Available',
-                          style: TextStyle(color: Colors.green),
-                        ),
-                      ],
-                    ),
                   ],
                 ),
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
   }
+
 }
