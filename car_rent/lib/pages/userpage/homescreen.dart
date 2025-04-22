@@ -1,4 +1,5 @@
-import 'package:car_rent/pages/userpage/booking/detailcar.dart';
+
+import 'package:car_rent/pages/userpage/booking/detailcaruser.dart' show VehicleDetailScreen;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
@@ -166,7 +167,7 @@ class CarRentHomeScreen extends StatelessWidget {
                             'Air Conditioning', // Example: Replace with actual features from Firestore
                             'Bluetooth',
                             // Add more features from Firestore as needed
-                          ],
+                          ], data: {},
                         ),
                   ),
                 );

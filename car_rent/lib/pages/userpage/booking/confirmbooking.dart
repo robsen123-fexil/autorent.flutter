@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class BookingScreen extends StatefulWidget {
@@ -34,6 +35,12 @@ class _BookingScreenState extends State<BookingScreen> {
 
   bool isLoading = false;
 
+  // Function to get current user from FirebaseAuth
+  User? getCurrentUser() {
+    final user = FirebaseAuth.instance.currentUser;
+    return user;
+  }
+
   void _confirmBooking() async {
     if (pickupDateController.text.isEmpty ||
         pickupTimeController.text.isEmpty ||
@@ -50,7 +57,16 @@ class _BookingScreenState extends State<BookingScreen> {
     setState(() => isLoading = true);
 
     try {
-      await FirebaseFirestore.instance.collection('bookings').add({
+      User? currentUser = getCurrentUser();
+      if (currentUser == null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('No user logged in')));
+        return;
+      }
+
+      // Add the reservation to Firestore
+      await FirebaseFirestore.instance.collection('reserved').add({
         'vehicleId': widget.vehicleId,
         'vehicleName': widget.vehicleName,
         'vehicleType': widget.vehicleType,
@@ -64,6 +80,11 @@ class _BookingScreenState extends State<BookingScreen> {
         'returnLocation': returnLocationController.text,
         'createdAt': Timestamp.now(),
         'status': 'Pending',
+        'userId': currentUser.uid, // Store current user's UID
+        'userEmail': currentUser.email, // Store current user's email (optional)
+        'userDisplayName':
+            currentUser.displayName ??
+            'Unknown', // Store user's name (optional)
       });
 
       ScaffoldMessenger.of(

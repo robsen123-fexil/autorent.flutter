@@ -21,7 +21,7 @@ class VehicleDetailScreen extends StatelessWidget {
     required this.pricePerDay,
     required this.status,
     required this.specs,
-    required this.features,
+    required this.features, required Map<String, dynamic> data,
   });
 
   @override

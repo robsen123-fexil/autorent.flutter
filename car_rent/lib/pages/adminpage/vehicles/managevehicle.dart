@@ -1,20 +1,7 @@
+import 'package:car_rent/pages/adminpage/vehicles/vehicledetailadmin.dart';
 import 'package:flutter/material.dart';
-
-void main() {
-  runApp(const VehicleManagementApp());
-}
-
-class VehicleManagementApp extends StatelessWidget {
-  const VehicleManagementApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: VehicleManagementScreen(),
-    );
-  }
-}
+import 'package:cloud_firestore/cloud_firestore.dart';
+ // 👈 Import the detail screen
 
 class VehicleManagementScreen extends StatelessWidget {
   const VehicleManagementScreen({super.key});
@@ -52,9 +39,10 @@ class VehicleManagementScreen extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 2),
             child: SizedBox(
               width: 200,
-           
               child: ElevatedButton(
-                onPressed: () {},
+                onPressed: () {
+                  // Navigate to add new vehicle screen
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1A237E),
                   foregroundColor: Colors.white,
@@ -73,17 +61,56 @@ class VehicleManagementScreen extends StatelessWidget {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: GridView.count(
-                crossAxisCount: 2,
-                mainAxisSpacing: 16,
-                crossAxisSpacing: 16,
-                childAspectRatio: 0.68, // tweaked for vertical space
-                children: const [
-                  VehicleCard('Toyota Corolla', 'Sedan', 'ETB 2500'),
-                  VehicleCard('Toyota Hiace', 'Van', 'ETB 4500'),
-                  VehicleCard('Land Cruiser', 'SUV', 'ETB 5000'),
-                  VehicleCard('Suzuki Alto', 'Compact', 'ETB 1500'),
-                ],
+              child: StreamBuilder<QuerySnapshot>(
+                stream:
+                    FirebaseFirestore.instance
+                        .collection('vehicles')
+                        .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  }
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const Center(child: Text('No vehicles found.'));
+                  }
+
+                  final vehicleDocs = snapshot.data!.docs;
+
+                  return GridView.count(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 16,
+                    crossAxisSpacing: 16,
+                    childAspectRatio: 0.68,
+                    children:
+                        vehicleDocs.map((doc) {
+                          final data = doc.data() as Map<String, dynamic>;
+
+                          return GestureDetector(
+                            onTap: () {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => VehicleManageDetailScreen(
+        docId: doc.id,
+        vehicleData: data,
+      ),
+    ),
+  );
+},
+
+                            child: VehicleCard(
+                              name: data['name'] ?? 'N/A',
+                              type: data['type'] ?? 'N/A',
+                              price: 'ETB ${data['rate'] ?? '0'}',
+                              imageUrl: data['image_url'] ?? '',
+                            ),
+                          );
+                        }).toList(),
+                  );
+                },
               ),
             ),
           ),
@@ -97,14 +124,20 @@ class VehicleCard extends StatelessWidget {
   final String name;
   final String type;
   final String price;
+  final String imageUrl;
 
-
-  const VehicleCard(this.name, this.type, this.price,  {super.key});
+  const VehicleCard({
+    super.key,
+    required this.name,
+    required this.type,
+    required this.price,
+    required this.imageUrl,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 260, // limit the height of each card
+      height: 260,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         color: Colors.white,
@@ -122,13 +155,21 @@ class VehicleCard extends StatelessWidget {
             height: 90,
             width: double.infinity,
             decoration: BoxDecoration(
-              color: Colors.grey[300],
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(12),
                 topRight: Radius.circular(12),
               ),
+              image:
+                  imageUrl.isNotEmpty
+                      ? DecorationImage(
+                        image: NetworkImage(imageUrl),
+                        fit: BoxFit.cover,
+                      )
+                      : null,
+              color: Colors.grey[300],
             ),
-            child: const Center(child: Text('300 x 400')),
+            child:
+                imageUrl.isEmpty ? const Center(child: Text('No Image')) : null,
           ),
           Expanded(
             child: Padding(
@@ -143,7 +184,6 @@ class VehicleCard extends StatelessWidget {
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ),
-                      
                     ],
                   ),
                   Align(
@@ -161,45 +201,6 @@ class VehicleCard extends StatelessWidget {
                         ),
                       ),
                       const Text('/D', style: TextStyle(color: Colors.blue)),
-                      
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {},
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF1A237E),
-                            padding: const EdgeInsets.symmetric(vertical: 6),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                          ),
-                          child: const Text(
-                            'Edit',
-                            style: TextStyle(fontSize: 12),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () {},
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Colors.red),
-                            padding: const EdgeInsets.symmetric(vertical: 3),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                          ),
-                          child: const Text(
-                            'Delete',
-                            style: TextStyle(fontSize: 12, color: Colors.red),
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                 ],
