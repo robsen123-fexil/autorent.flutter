@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 class ApprovedBookingsScreen extends StatefulWidget {
+  const ApprovedBookingsScreen({super.key});
+
   @override
   _ApprovedBookingsScreenState createState() => _ApprovedBookingsScreenState();
 }

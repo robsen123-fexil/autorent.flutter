@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 class ProfilePage extends StatelessWidget {
+  const ProfilePage({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -47,12 +49,12 @@ class ProfilePage extends StatelessWidget {
               onPressed: () {
                 
               },
-              child: Text('Edit Profile'),
               style: ElevatedButton.styleFrom(
                 foregroundColor: Colors.white,
                 backgroundColor: Colors.blue[900],
                 minimumSize: Size(double.infinity, 36),
               ),
+              child: Text('Edit Profile'),
             ),
           ],
         ),
@@ -65,7 +67,7 @@ class ProfileDetail extends StatelessWidget {
   final String title;
   final String value;
 
-  ProfileDetail({required this.title, required this.value});
+  const ProfileDetail({super.key, required this.title, required this.value});
 
   @override
   Widget build(BuildContext context) {

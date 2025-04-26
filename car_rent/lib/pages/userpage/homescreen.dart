@@ -103,7 +103,6 @@ class CarRentHomeScreen extends StatelessWidget {
           const SizedBox(width: 12),
           ElevatedButton(
             onPressed: () {},
-            child: Icon(Icons.view_list_rounded),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
               foregroundColor: Colors.black,
@@ -112,6 +111,7 @@ class CarRentHomeScreen extends StatelessWidget {
               ),
               elevation: 0,
             ),
+            child: Icon(Icons.view_list_rounded),
           ),
         ],
       ),

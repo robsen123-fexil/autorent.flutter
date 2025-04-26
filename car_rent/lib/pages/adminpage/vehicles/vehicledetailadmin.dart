@@ -108,7 +108,7 @@ class _VehicleManageDetailScreenState extends State<VehicleManageDetailScreen> {
       appBar: AppBar(
         title: const Text('Edit Vehicle'),
         backgroundColor: const Color(0xFF1A237E),
-        foregroundColor: Colors.white,
+        foregroundColor: Colors.white
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),

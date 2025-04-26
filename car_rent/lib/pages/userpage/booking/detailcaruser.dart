@@ -53,7 +53,7 @@ class VehicleDetailScreen extends StatelessWidget {
             const SizedBox(height: 16),
 
             // Specs
-            ...specs.entries.map((e) => _buildSpec(e.key, e.value)).toList(),
+            ...specs.entries.map((e) => _buildSpec(e.key, e.value)),
 
             const SizedBox(height: 16),
             const Text(
@@ -61,7 +61,7 @@ class VehicleDetailScreen extends StatelessWidget {
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const SizedBox(height: 8),
-            ...features.map(_buildFeature).toList(),
+            ...features.map(_buildFeature),
 
             const SizedBox(height: 24),
             // Price and availability

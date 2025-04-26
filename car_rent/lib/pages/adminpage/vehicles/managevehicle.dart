@@ -1,3 +1,4 @@
+import 'package:car_rent/pages/adminpage/vehicles/addvehicle.dart';
 import 'package:car_rent/pages/adminpage/vehicles/vehicledetailadmin.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -41,8 +42,14 @@ class VehicleManagementScreen extends StatelessWidget {
               width: 200,
               child: ElevatedButton(
                 onPressed: () {
-                  // Navigate to add new vehicle screen
-                },
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => AddNewVehicleScreen(), // <- replace with your actual screen
+    ),
+  );
+},
+
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1A237E),
                   foregroundColor: Colors.white,
