@@ -1,4 +1,5 @@
 import 'package:car_rent/authpag/loginscreen.dart';
+import 'package:car_rent/pages/userpage/homescreen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -20,11 +21,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _isLoading = false; // Added loading state
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  void _createAccount() async {
+  Future<void> _createAccount() async {
+    if (_isLoading) return; // Prevent multiple taps
+
     if (_passwordController.text.trim() !=
         _confirmPasswordController.text.trim()) {
       ScaffoldMessenger.of(
@@ -32,6 +36,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ).showSnackBar(const SnackBar(content: Text('❌ Passwords do not match')));
       return;
     }
+
+    setState(() {
+      _isLoading = true; // Show loading indicator
+    });
 
     try {
       // Step 1: Create user in Firebase Auth
@@ -48,18 +56,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
         'phoneNumber': _phoneNumberController.text.trim(),
         'uid': userCredential.user!.uid,
         'createdAt': Timestamp.now(),
-        'role':'customer'
+        'role': 'customer',
       });
 
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('✅ Account created successfully!')),
       );
-
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const CarRentHomeScreen()),
+      );
     } catch (e) {
       print('🔥 Registration Error: $e');
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false; // Hide loading indicator
+        });
+      }
     }
   }
 
@@ -144,7 +163,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: _createAccount,
+                    onPressed: _isLoading ? null : _createAccount,
                     style: ElevatedButton.styleFrom(
                       foregroundColor: Colors.white,
                       backgroundColor: const Color(0xFF5C6BC0),
@@ -153,10 +172,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text(
-                      "Create Account",
-                      style: TextStyle(fontSize: 16),
-                    ),
+                    child:
+                        _isLoading
+                            ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                            : const Text(
+                              "Create Account",
+                              style: TextStyle(fontSize: 16),
+                            ),
                   ),
                 ),
 
@@ -167,20 +196,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   children: [
                     const Text("Already have an account? "),
                     GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => Loginscreen(),
-                          ),
-                        );
-                        debugPrint('Go to Login screen');
-                        // TODO: Navigator.push to LoginScreen()
-                      },
-                      child: const Text(
+                      onTap:
+                          _isLoading
+                              ? null
+                              : () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const Loginscreen(),
+                                  ),
+                                );
+                              },
+                      child: Text(
                         "Login",
                         style: TextStyle(
-                          color: Color(0xFF1A237E),
+                          color:
+                              _isLoading
+                                  ? Colors.grey
+                                  : const Color(0xFF1A237E),
                           fontWeight: FontWeight.bold,
                           decoration: TextDecoration.underline,
                         ),

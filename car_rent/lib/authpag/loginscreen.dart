@@ -152,7 +152,7 @@ class _LoginScreenState extends State<Loginscreen> {
         // User is a customer
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const CarRentHomeScreen()),
+          MaterialPageRoute(builder: (_) =>  CarRentHomeScreen()),
         );
         return;
       }

@@ -110,13 +110,15 @@ class _BookingScreenState extends State<BookingScreen> {
     );
   }
 
-  Widget buildInputField(String label, TextEditingController controller) {
+  Widget buildInputField(String hinttext,TextEditingController controller) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
       child: TextField(
+      
         controller: controller,
         decoration: InputDecoration(
-          labelText: label,
+          hintText: hinttext,
+       
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         ),
       ),
@@ -183,20 +185,21 @@ class _BookingScreenState extends State<BookingScreen> {
                 ),
                 const SizedBox(height: 24),
                 buildSectionTitle("Pickup Details"),
-                buildInputField("Pickup Date", pickupDateController),
-                buildInputField("Pickup Time", pickupTimeController),
-                buildInputField("Pickup Location", pickupLocationController),
+                buildInputField('example:Monday ' ,pickupDateController),
+                buildInputField('example:Morning 9:00am',  pickupTimeController),
+                buildInputField(  'example: current Office', pickupLocationController),
                 const SizedBox(height: 24),
                 buildSectionTitle("Return Details"),
-                buildInputField("Return Date", returnDateController),
-                buildInputField("Return Time", returnTimeController),
-                buildInputField("Drop-off Location", returnLocationController),
+                buildInputField( 'example:Friday',  returnDateController),
+                buildInputField('example:Afternoon 4:00pm', returnTimeController),
+                buildInputField('currentOfice', returnLocationController),
                 const SizedBox(height: 32),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.indigo,
+                      foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
                     onPressed: isLoading ? null : _confirmBooking,

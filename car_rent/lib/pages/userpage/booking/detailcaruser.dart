@@ -9,7 +9,7 @@ class VehicleDetailScreen extends StatelessWidget {
   final String pricePerDay;
   final String status;
 
-  final Map<String, String> specs;
+ 
   final List<String> features;
 
   const VehicleDetailScreen({
@@ -20,8 +20,9 @@ class VehicleDetailScreen extends StatelessWidget {
     required this.imageUrl,
     required this.pricePerDay,
     required this.status,
-    required this.specs,
-    required this.features, required Map<String, dynamic> data,
+
+    required this.features,
+    required Map<String, dynamic> data,
   });
 
   @override
@@ -53,7 +54,7 @@ class VehicleDetailScreen extends StatelessWidget {
             const SizedBox(height: 16),
 
             // Specs
-            ...specs.entries.map((e) => _buildSpec(e.key, e.value)),
+         
 
             const SizedBox(height: 16),
             const Text(
