@@ -68,7 +68,7 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
             'first_name': firstName,
             'last_name': lastName,
             'email': email,
-            'role': role,
+            'role': role  ,
             'created_at': FieldValue.serverTimestamp(),
           });
 
@@ -96,6 +96,14 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF0F2F5),
+      appBar: AppBar(
+        leading: IconButton(
+          onPressed: () {
+            Navigator.pop(context);
+          },
+          icon: Icon(Icons.arrow_back),
+        ),
+      ),
       body: Center(
         child: SingleChildScrollView(
           child: Container(

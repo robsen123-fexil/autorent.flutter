@@ -2,7 +2,7 @@ import 'package:car_rent/pages/adminpage/vehicles/addvehicle.dart';
 import 'package:car_rent/pages/adminpage/vehicles/vehicledetailadmin.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
- // 👈 Import the detail screen
+// 👈 Import the detail screen
 
 class VehicleManagementScreen extends StatelessWidget {
   const VehicleManagementScreen({super.key});
@@ -24,15 +24,30 @@ class VehicleManagementScreen extends StatelessWidget {
                 bottomRight: Radius.circular(20),
               ),
             ),
-            child: const SafeArea(
-              child: Text(
-                'Vehicle Management',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+            child: Row(
+              children: [
+                IconButton(
+                  onPressed: () {},
+                  icon: IconButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    icon: Icon(Icons.arrow_back  , color: Colors.white, size: 30,),
+                  ),
                 ),
-              ),
+                SizedBox(width: 30,),
+
+                SafeArea(
+                  child: Text(
+                    'Vehicle Management',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 20),
@@ -42,13 +57,15 @@ class VehicleManagementScreen extends StatelessWidget {
               width: 200,
               child: ElevatedButton(
                 onPressed: () {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => AddNewVehicleScreen(), // <- replace with your actual screen
-    ),
-  );
-},
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) =>
+                              AddNewVehicleScreen(), // <- replace with your actual screen
+                    ),
+                  );
+                },
 
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1A237E),
@@ -97,16 +114,17 @@ class VehicleManagementScreen extends StatelessWidget {
 
                           return GestureDetector(
                             onTap: () {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => VehicleManageDetailScreen(
-        docId: doc.id,
-        vehicleData: data,
-      ),
-    ),
-  );
-},
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder:
+                                      (_) => VehicleManageDetailScreen(
+                                        docId: doc.id,
+                                        vehicleData: data,
+                                      ),
+                                ),
+                              );
+                            },
 
                             child: VehicleCard(
                               name: data['name'] ?? 'N/A',

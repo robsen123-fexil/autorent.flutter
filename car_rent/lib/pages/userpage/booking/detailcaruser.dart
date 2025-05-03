@@ -1,16 +1,16 @@
 import 'package:car_rent/pages/userpage/booking/confirmbooking.dart';
 import 'package:flutter/material.dart';
 
-class VehicleDetailScreen extends StatelessWidget {
+class VehicleDetailScreen extends StatefulWidget {
   final String vehicleId;
   final String name;
   final String type;
   final String imageUrl;
   final String pricePerDay;
   final String status;
-
- 
   final List<String> features;
+  final List<String> imageUrls;
+  final Map<String, dynamic> data;
 
   const VehicleDetailScreen({
     super.key,
@@ -20,10 +20,17 @@ class VehicleDetailScreen extends StatelessWidget {
     required this.imageUrl,
     required this.pricePerDay,
     required this.status,
-
     required this.features,
-    required Map<String, dynamic> data,
+    required this.imageUrls,
+    required this.data,
   });
+
+  @override
+  State<VehicleDetailScreen> createState() => _VehicleDetailScreenState();
+}
+
+class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
+  int _currentImageIndex = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +38,7 @@ class VehicleDetailScreen extends StatelessWidget {
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         backgroundColor: Colors.white,
-        title: Text(name, style: const TextStyle(color: Colors.black)),
+        title: Text(widget.name, style: const TextStyle(color: Colors.black)),
         iconTheme: const IconThemeData(color: Colors.black),
         elevation: 0,
       ),
@@ -40,32 +47,86 @@ class VehicleDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Vehicle image
-            Container(
-              height: 200,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                image: DecorationImage(
-                  image: NetworkImage(imageUrl),
-                  fit: BoxFit.cover,
-                ),
+            // Image Slider with Indicator
+            SizedBox(
+              height: 240,
+              child: Stack(
+                alignment: Alignment.bottomCenter,
+                children: [
+                  PageView.builder(
+                    itemCount: widget.imageUrls.length,
+                    onPageChanged: (index) {
+                      setState(() {
+                        _currentImageIndex = index;
+                      });
+                    },
+                    itemBuilder: (context, index) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(1),
+                          child: Image.network(
+                            widget.imageUrls[index],
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: 220,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                color: Colors.grey[300],
+                                child: const Center(
+                                  child: Icon(Icons.broken_image, size: 60),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  if (widget.imageUrls.length > 1)
+                    Positioned(
+                      bottom: 10,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(
+                          widget.imageUrls.length,
+                          (index) => AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            width: _currentImageIndex == index ? 12 : 8,
+                            height: _currentImageIndex == index ? 12 : 8,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color:
+                                  _currentImageIndex == index
+                                      ? Colors.white
+                                      : Colors.white.withOpacity(0.5),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
-            const SizedBox(height: 16),
-
-            // Specs
-         
 
             const SizedBox(height: 16),
+
             const Text(
               "Features & Amenities",
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const SizedBox(height: 8),
-            ...features.map(_buildFeature),
+            ...widget.features.map(_buildFeature),
 
             const SizedBox(height: 24),
-            // Price and availability
+
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -77,7 +138,7 @@ class VehicleDetailScreen extends StatelessWidget {
                       style: TextStyle(fontSize: 14, color: Colors.grey),
                     ),
                     Text(
-                      "ETB $pricePerDay",
+                      "ETB ${widget.pricePerDay}",
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -92,15 +153,18 @@ class VehicleDetailScreen extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color:
-                        status == "Available"
+                        widget.status == "Available"
                             ? Colors.green[100]
                             : Colors.red[100],
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    status,
+                    widget.status,
                     style: TextStyle(
-                      color: status == "Available" ? Colors.green : Colors.red,
+                      color:
+                          widget.status == "Available"
+                              ? Colors.green
+                              : Colors.red,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -109,7 +173,7 @@ class VehicleDetailScreen extends StatelessWidget {
             ),
 
             const SizedBox(height: 16),
-            // Reserve button
+
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -122,7 +186,7 @@ class VehicleDetailScreen extends StatelessWidget {
                   ),
                 ),
                 onPressed:
-                    status != "Available"
+                    widget.status != "Available"
                         ? null
                         : () {
                           Navigator.push(
@@ -130,11 +194,11 @@ class VehicleDetailScreen extends StatelessWidget {
                             MaterialPageRoute(
                               builder:
                                   (_) => BookingScreen(
-                                    vehicleId: vehicleId,
-                                    vehicleName: name,
-                                    vehicleType: type,
-                                    rate: pricePerDay,
-                                    imageUrl: imageUrl,
+                                    vehicleId: widget.vehicleId,
+                                    vehicleName: widget.name,
+                                    vehicleType: widget.type,
+                                    rate: widget.pricePerDay,
+                                    imageUrl: widget.imageUrl,
                                   ),
                             ),
                           );
@@ -147,19 +211,6 @@ class VehicleDetailScreen extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildSpec(String title, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
-          Text(value),
-        ],
       ),
     );
   }

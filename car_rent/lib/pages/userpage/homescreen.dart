@@ -17,9 +17,29 @@ class _CarRentHomeScreenState extends State<CarRentHomeScreen> {
   String _searchQuery = '';
   String _selectedType = 'All';
   String _selectedStatus = 'All';
+  bool _showNotifications = false; // Track notification drawer state
 
   final List<String> _vehicleTypes = ['All', 'Sedan', 'SUV', 'Van', 'Truck'];
   final List<String> _statusOptions = ['All', 'Available', 'Unavailable'];
+
+  // Sample notification data (replace with your actual data source)
+  final List<Map<String, dynamic>> _notifications = [
+    {
+      'title': 'New Booking',
+      'time': '2 mins ago',
+      'message': 'Toyota Corolla has been booked for tomorrow',
+    },
+    {
+      'title': 'Booking Confirmed',
+      'time': '1 hour ago',
+      'message': 'Your booking for Toyota Hiace is confirmed',
+    },
+    {
+      'title': 'Payment Received',
+      'time': '2 hours ago',
+      'message': 'Payment of ETB 4500 received for Toyota Land Cruiser',
+    },
+  ];
 
   @override
   void dispose() {
@@ -27,22 +47,119 @@ class _CarRentHomeScreenState extends State<CarRentHomeScreen> {
     super.dispose();
   }
 
+  void _toggleNotifications() {
+    setState(() {
+      _showNotifications = !_showNotifications;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            const HeaderSection(),
-            const SizedBox(height: 16),
-            _buildSearchBar(),
-            const SizedBox(height: 16),
-            _buildFilters(),
-            const SizedBox(height: 16),
-            Expanded(child: _buildCarList()),
+            Column(
+              children: [
+                HeaderSection(onNotificationPressed: _toggleNotifications),
+                const SizedBox(height: 16),
+                _buildSearchBar(),
+                const SizedBox(height: 16),
+                _buildFilters(),
+                const SizedBox(height: 16),
+                Expanded(child: _buildCarList()),
+              ],
+            ),
+
+            // Notification Drawer
+            if (_showNotifications)
+              Positioned(
+                top: 100, // Adjust based on your header height
+                right: 16,
+                child: Material(
+                  elevation: 8,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    width: MediaQuery.of(context).size.width * 0.8,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 10,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Notifications',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: _toggleNotifications,
+                            ),
+                          ],
+                        ),
+                        const Divider(),
+                        const SizedBox(height: 8),
+                        ..._notifications.map(
+                          (notification) => _buildNotificationItem(
+                            notification['title'],
+                            notification['time'],
+                            notification['message'],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildNotificationItem(String title, String time, String message) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              Text(
+                time,
+                style: const TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(message),
+          const SizedBox(height: 8),
+          const Divider(),
+        ],
       ),
     );
   }
@@ -198,17 +315,14 @@ class _CarRentHomeScreenState extends State<CarRentHomeScreen> {
               final type = carData['type']?.toString() ?? '';
               final status = carData['status']?.toString() ?? '';
 
-              // Apply search filter
               if (_searchQuery.isNotEmpty && !name.contains(_searchQuery)) {
                 return false;
               }
 
-              // Apply type filter
               if (_selectedType != 'All' && type != _selectedType) {
                 return false;
               }
 
-              // Apply status filter
               if (_selectedStatus != 'All' && status != _selectedStatus) {
                 return false;
               }
@@ -244,7 +358,11 @@ class _CarRentHomeScreenState extends State<CarRentHomeScreen> {
                             carData['features'] ??
                                 ['Air Conditioning', 'Bluetooth'],
                           ),
-                          data: {},
+                          imageUrls: List<String>.from(
+                            carData['image_urls'] ??
+                                [carData['image_url'] ?? ''],
+                          ),
+                          data: carData, // Pass the actual carData map
                         ),
                   ),
                 );
@@ -346,7 +464,9 @@ class _CarRentHomeScreenState extends State<CarRentHomeScreen> {
 }
 
 class HeaderSection extends StatefulWidget {
-  const HeaderSection({super.key});
+  final VoidCallback onNotificationPressed;
+
+  const HeaderSection({super.key, required this.onNotificationPressed});
 
   @override
   State<HeaderSection> createState() => _HeaderSectionState();
@@ -405,7 +525,7 @@ class _HeaderSectionState extends State<HeaderSection> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.notifications, color: Colors.white),
-                    onPressed: () {},
+                    onPressed: widget.onNotificationPressed,
                   ),
                   const SizedBox(width: 8),
                   GestureDetector(

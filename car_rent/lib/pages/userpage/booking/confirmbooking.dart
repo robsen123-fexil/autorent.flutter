@@ -1,6 +1,9 @@
+import 'package:car_rent/pages/userpage/booking/payment/payment.dart';
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
+
 
 class BookingScreen extends StatefulWidget {
   final String vehicleId;
@@ -23,104 +26,152 @@ class BookingScreen extends StatefulWidget {
 }
 
 class _BookingScreenState extends State<BookingScreen> {
-  final TextEditingController pickupDateController = TextEditingController();
-  final TextEditingController pickupTimeController = TextEditingController();
-  final TextEditingController pickupLocationController =
-      TextEditingController();
+  DateTime? _pickupDate;
+  TimeOfDay? _pickupTime;
+  DateTime? _returnDate;
+  TimeOfDay? _returnTime;
+  bool _isLoading = false;
 
-  final TextEditingController returnDateController = TextEditingController();
-  final TextEditingController returnTimeController = TextEditingController();
-  final TextEditingController returnLocationController =
-      TextEditingController();
-
-  bool isLoading = false;
-
-  // Function to get current user from FirebaseAuth
-  User? getCurrentUser() {
-    final user = FirebaseAuth.instance.currentUser;
-    return user;
+  Future<void> _selectDate(BuildContext context, bool isPickup) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 30)),
+      selectableDayPredicate: (DateTime date) {
+        return date.weekday >= DateTime.monday &&
+            date.weekday <= DateTime.saturday;
+      },
+    );
+    if (picked != null) {
+      setState(() {
+        if (isPickup) {
+          _pickupDate = picked;
+        } else {
+          _returnDate = picked;
+        }
+      });
+    }
   }
 
-  void _confirmBooking() async {
-    if (pickupDateController.text.isEmpty ||
-        pickupTimeController.text.isEmpty ||
-        pickupLocationController.text.isEmpty ||
-        returnDateController.text.isEmpty ||
-        returnTimeController.text.isEmpty ||
-        returnLocationController.text.isEmpty) {
+  Future<void> _selectTime(BuildContext context, bool isPickup) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+    if (picked != null) {
+      setState(() {
+        if (isPickup) {
+          _pickupTime = picked;
+        } else {
+          _returnTime = picked;
+        }
+      });
+    }
+  }
+
+  Future<void> _confirmBooking() async {
+    if (_pickupDate == null ||
+        _pickupTime == null ||
+        _returnDate == null ||
+        _returnTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill all the fields')),
       );
       return;
     }
 
-    setState(() => isLoading = true);
-
-    try {
-      User? currentUser = getCurrentUser();
-      if (currentUser == null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('No user logged in')));
-        return;
-      }
-
-      // Add the reservation to Firestore
-      await FirebaseFirestore.instance.collection('reserved').add({
-        'vehicleId': widget.vehicleId,
-        'vehicleName': widget.vehicleName,
-        'vehicleType': widget.vehicleType,
-        'rate': widget.rate,
-        'imageUrl': widget.imageUrl,
-        'pickupDate': pickupDateController.text,
-        'pickupTime': pickupTimeController.text,
-        'pickupLocation': pickupLocationController.text,
-        'returnDate': returnDateController.text,
-        'returnTime': returnTimeController.text,
-        'returnLocation': returnLocationController.text,
-        'createdAt': Timestamp.now(),
-        'status': 'Pending',
-        'userId': currentUser.uid, // Store current user's UID
-        'userEmail': currentUser.email, // Store current user's email (optional)
-        'userDisplayName':
-            currentUser.displayName ??
-            'Unknown', // Store user's name (optional)
-      });
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Booking Confirmed!')));
-      Navigator.pop(context); // go back to home or previous screen
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to book: $e')));
-    } finally {
-      setState(() => isLoading = false);
+    if (_returnDate!.isBefore(_pickupDate!) ||
+        (_returnDate == _pickupDate && _returnTime!.hour < _pickupTime!.hour)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Return must be after pickup')),
+      );
+      return;
     }
-  }
 
-  Widget buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Text(
-        title,
-        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+    // Combine date and time
+    final pickupDateTime = DateTime(
+      _pickupDate!.year,
+      _pickupDate!.month,
+      _pickupDate!.day,
+      _pickupTime!.hour,
+      _pickupTime!.minute,
+    );
+
+    final returnDateTime = DateTime(
+      _returnDate!.year,
+      _returnDate!.month,
+      _returnDate!.day,
+      _returnTime!.hour,
+      _returnTime!.minute,
+    );
+
+    // Navigate to payment screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder:
+            (context) => TelebinPaymentScreen(
+              totalAmount: _calculateTotalCost(),
+              pickupDate: pickupDateTime,
+              returnDate: returnDateTime,
+              vehicleId: widget.vehicleId,
+              vehicleName: widget.vehicleName,
+              vehicleType: widget.vehicleType,
+              imageUrl: widget.imageUrl,
+              rate: widget.rate,
+            ),
       ),
     );
   }
 
-  Widget buildInputField(String hinttext,TextEditingController controller) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
-      child: TextField(
-      
-        controller: controller,
-        decoration: InputDecoration(
-          hintText: hinttext,
-       
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+  double _calculateTotalCost() {
+    final days = _returnDate!.difference(_pickupDate!).inDays + 1;
+    return days * double.parse(widget.rate);
+  }
+
+  Widget _buildDatePickerButton(String label, DateTime? date, bool isPickup) {
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(color: Colors.grey.shade300),
         ),
+      ),
+      onPressed: () => _selectDate(context, isPickup),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            date == null
+                ? 'Select $label Date'
+                : DateFormat('EEE, MMM d').format(date),
+          ),
+          const Icon(Icons.calendar_today, size: 18),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimePickerButton(String label, TimeOfDay? time, bool isPickup) {
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(color: Colors.grey.shade300),
+        ),
+      ),
+      onPressed: () => _selectTime(context, isPickup),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(time == null ? 'Select $label Time' : time.format(context)),
+          const Icon(Icons.access_time, size: 18),
+        ],
       ),
     );
   }
@@ -128,95 +179,94 @@ class _BookingScreenState extends State<BookingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                    const Text(
-                      "Book Your Vehicle",
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
+      appBar: AppBar(
+        title: const Text('Book Vehicle'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Vehicle Preview
+            Container(
+              height: 200,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                image: DecorationImage(
+                  image: NetworkImage(widget.imageUrl),
+                  fit: BoxFit.cover,
                 ),
-                const SizedBox(height: 16),
-                Container(
-                  width: double.infinity,
-                  height: 200,
-                  decoration: BoxDecoration(
-                    image: DecorationImage(
-                      image: NetworkImage(widget.imageUrl),
-                      fit: BoxFit.cover,
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    color: Colors.grey[300],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  widget.vehicleName,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  widget.vehicleType,
-                  style: const TextStyle(color: Colors.grey),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'ETB ${widget.rate}/day',
-                  style: const TextStyle(
-                    color: Colors.blue,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                buildSectionTitle("Pickup Details"),
-                buildInputField('example:Monday ' ,pickupDateController),
-                buildInputField('example:Morning 9:00am',  pickupTimeController),
-                buildInputField(  'example: current Office', pickupLocationController),
-                const SizedBox(height: 24),
-                buildSectionTitle("Return Details"),
-                buildInputField( 'example:Friday',  returnDateController),
-                buildInputField('example:Afternoon 4:00pm', returnTimeController),
-                buildInputField('currentOfice', returnLocationController),
-                const SizedBox(height: 32),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.indigo,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                    onPressed: isLoading ? null : _confirmBooking,
-                    child:
-                        isLoading
-                            ? const CircularProgressIndicator(
-                              color: Colors.white,
-                            )
-                            : const Text(
-                              "Confirm Booking",
-                              style: TextStyle(fontSize: 16),
-                            ),
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
+            const SizedBox(height: 16),
+            Text(
+              widget.vehicleName,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              widget.vehicleType,
+              style: const TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'ETB ${widget.rate}/day',
+              style: const TextStyle(
+                color: Colors.blue,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Pickup Details
+            const Text(
+              'Pickup Details',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            _buildDatePickerButton('Pickup', _pickupDate, true),
+            const SizedBox(height: 8),
+            _buildTimePickerButton('Pickup', _pickupTime, true),
+            const SizedBox(height: 8),
+
+            // Return Details
+            const Text(
+              'Return Details',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            _buildDatePickerButton('Return', _returnDate, false),
+            const SizedBox(height: 8),
+            _buildTimePickerButton('Return', _returnTime, false),
+            const SizedBox(height: 8),
+
+            // Confirm Button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.indigo,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onPressed: _isLoading ? null : _confirmBooking,
+                child:
+                    _isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text(
+                          'CONFIRM BOOKING',
+                          style: TextStyle(fontSize: 16),
+                        ),
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -1,3 +1,4 @@
+import 'package:car_rent/authpag/authscreen.dart';
 import 'package:car_rent/pages/userpage/profile/editprofile.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -52,6 +53,20 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       setState(() {
         isLoading = false;
       });
+    }
+  }
+
+  // Logout function
+  Future<void> _logout() async {
+    try {
+      await FirebaseAuth.instance.signOut();
+      // You can navigate to your login screen here if needed
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => Authscreen()),
+      ); // Adjust based on your route
+    } catch (e) {
+      print('Error logging out: $e');
     }
   }
 
@@ -172,7 +187,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 24),
 
                     // Edit Profile Button
                     Padding(
@@ -191,7 +205,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             ); // Refresh after returning
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
+                            backgroundColor: const Color.fromARGB(
+                              255,
+                              25,
+                              120,
+                              197,
+                            ),
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -209,7 +228,49 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: GestureDetector(
+                          onTap: _logout,
+
+                          child: Row(
+                            children: [
+                              Icon(Icons.logout),
+                              SizedBox(width: 15),
+                              Text(
+                                'Logout',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 20,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // child: ElevatedButton(
+                        //   onPressed: _logout,
+                        //   style: ElevatedButton.styleFrom(
+                        //     backgroundColor: Colors.red,
+                        //     padding: const EdgeInsets.symmetric(vertical: 16),
+                        //     shape: RoundedRectangleBorder(
+                        //       borderRadius: BorderRadius.circular(12),
+                        //     ),
+                        //     elevation: 0,
+                        //   ),
+                        //   child: const Text(
+                        //     'Logout',
+                        //     style: TextStyle(
+                        //       color: Colors.white,
+                        //       fontSize: 16,
+                        //       fontWeight: FontWeight.bold,
+                        //     ),
+                        //   ),
+                        // ),
+                      ),
+                    ),
                   ],
                 ),
               ),
