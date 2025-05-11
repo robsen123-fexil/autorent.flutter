@@ -1,5 +1,6 @@
 import 'package:car_rent/authpag/authscreen.dart';
 import 'package:car_rent/pages/userpage/profile/editprofile.dart';
+import 'package:car_rent/pages/userpage/profile/mybooking.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -58,24 +59,50 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   // Logout function
   Future<void> _logout() async {
-    try {
-      await FirebaseAuth.instance.signOut();
-      // You can navigate to your login screen here if needed
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => Authscreen()),
-      ); // Adjust based on your route
-    } catch (e) {
-      print('Error logging out: $e');
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Confirm Logout'),
+            content: const Text('Are you sure you want to log out?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false), // cancel
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true), // confirm
+                child: const Text(
+                  'Logout',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+            ],
+          ),
+    );
+
+    if (shouldLogout == true) {
+      try {
+        await FirebaseAuth.instance.signOut();
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const Authscreen()),
+          (route) => false,
+        );
+      } catch (e) {
+        print('Error logging out: $e');
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Logout failed: $e')));
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color.fromARGB(255, 255, 255, 255),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
@@ -149,9 +176,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 24),
 
-                    // Personal Information Section
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.white,
@@ -184,6 +209,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                           _buildInfoRow('Email Address', email),
                           const Divider(height: 24),
                           _buildInfoRow('Address', address),
+                          SizedBox(height: 12),
+                        
                         ],
                       ),
                     ),
@@ -228,47 +255,29 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         ),
                       ),
                     ),
+                    SizedBox(height: 20),
 
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: GestureDetector(
-                          onTap: _logout,
-
-                          child: Row(
-                            children: [
-                              Icon(Icons.logout),
-                              SizedBox(width: 15),
-                              Text(
-                                'Logout',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 20,
-                                ),
-                              ),
-                            ],
-                          ),
+                    ElevatedButton.icon(
+                      onPressed: _logout,
+                      icon: Icon(Icons.logout, color: Colors.black, size: 20),
+                      label: Text(
+                        'Log_out',
+                        style: TextStyle(color: Colors.black),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color.fromARGB(
+                          255,
+                          212,
+                          212,
+                          212,
                         ),
-                        // child: ElevatedButton(
-                        //   onPressed: _logout,
-                        //   style: ElevatedButton.styleFrom(
-                        //     backgroundColor: Colors.red,
-                        //     padding: const EdgeInsets.symmetric(vertical: 16),
-                        //     shape: RoundedRectangleBorder(
-                        //       borderRadius: BorderRadius.circular(12),
-                        //     ),
-                        //     elevation: 0,
-                        //   ),
-                        //   child: const Text(
-                        //     'Logout',
-                        //     style: TextStyle(
-                        //       color: Colors.white,
-                        //       fontSize: 16,
-                        //       fontWeight: FontWeight.bold,
-                        //     ),
-                        //   ),
-                        // ),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 16,
+                          horizontal: 30,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                   ],

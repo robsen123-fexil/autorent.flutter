@@ -110,7 +110,7 @@ class PaymentService {
       final vehicleRef = FirebaseFirestore.instance
           .collection('vehicles')
           .doc(vehicleId);
-      batch.update(vehicleRef, {'status': 'unavailable'});
+      batch.update(vehicleRef, {'status': 'Booked'});
 
       await batch.commit();
 
@@ -358,7 +358,7 @@ class TransactionDetails extends StatelessWidget {
           const SizedBox(height: 8),
           _buildDetailRow('Transaction Type:', 'Transfer Money'),
           const SizedBox(height: 8),
-          _buildDetailRow('Transaction To:', 'iBERAHIM'),
+          _buildDetailRow('Transaction To:', 'Mohammed'),
           const SizedBox(height: 8),
           _buildDetailRow('Transaction Number:', transactionId),
         ],

@@ -1,9 +1,13 @@
+import 'dart:async';
 import 'package:car_rent/pages/userpage/booking/detailcaruser.dart'
     show VehicleDetailScreen;
+import 'package:car_rent/pages/userpage/profile/mybooking.dart';
 import 'package:car_rent/pages/userpage/profile/profile.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:pull_to_refresh/pull_to_refresh.dart';
 
 class CarRentHomeScreen extends StatefulWidget {
   const CarRentHomeScreen({super.key});
@@ -14,43 +18,204 @@ class CarRentHomeScreen extends StatefulWidget {
 
 class _CarRentHomeScreenState extends State<CarRentHomeScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final RefreshController _refreshController = RefreshController();
   String _searchQuery = '';
   String _selectedType = 'All';
   String _selectedStatus = 'All';
-  bool _showNotifications = false; // Track notification drawer state
+  bool _showNotifications = false;
+  int _unreadCount = 0;
+  List<Map<String, dynamic>> _notifications = [];
+  StreamSubscription<QuerySnapshot>? _notificationsSubscription;
+  StreamSubscription<QuerySnapshot>? _bookingsSubscription;
 
   final List<String> _vehicleTypes = ['All', 'Sedan', 'SUV', 'Van', 'Truck'];
   final List<String> _statusOptions = ['All', 'Available', 'Unavailable'];
 
-  // Sample notification data (replace with your actual data source)
-  final List<Map<String, dynamic>> _notifications = [
-    {
-      'title': 'New Booking',
-      'time': '2 mins ago',
-      'message': 'Toyota Corolla has been booked for tomorrow',
-    },
-    {
-      'title': 'Booking Confirmed',
-      'time': '1 hour ago',
-      'message': 'Your booking for Toyota Hiace is confirmed',
-    },
-    {
-      'title': 'Payment Received',
-      'time': '2 hours ago',
-      'message': 'Payment of ETB 4500 received for Toyota Land Cruiser',
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _initializeListeners();
+    _loadInitialData();
+  }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _refreshController.dispose();
+    _notificationsSubscription?.cancel();
+    _bookingsSubscription?.cancel();
     super.dispose();
+  }
+
+  void _initializeListeners() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    // Notifications listener
+    _notificationsSubscription = FirebaseFirestore.instance
+        .collection('notifications')
+        .where('userId', isEqualTo: user.uid)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .listen((snapshot) {
+          _handleNotificationsUpdate(snapshot);
+        });
+
+    // Bookings listener
+    _bookingsSubscription = FirebaseFirestore.instance
+        .collection('bookings')
+        .where('userId', isEqualTo: user.uid)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .listen((snapshot) {
+          _handleNewBookings(snapshot);
+        });
+  }
+
+  Future<void> _loadInitialData() async {
+    await _refreshNotifications();
+    _refreshController.refreshCompleted();
+  }
+
+  Future<void> _refreshNotifications() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final snapshot =
+        await FirebaseFirestore.instance
+            .collection('notifications')
+            .where('userId', isEqualTo: user.uid)
+            .orderBy('createdAt', descending: true)
+            .limit(50)
+            .get();
+
+    _handleNotificationsUpdate(snapshot);
+  }
+
+  void _handleNotificationsUpdate(QuerySnapshot snapshot) {
+    if (!mounted) return;
+
+    setState(() {
+      _notifications =
+          snapshot.docs.map((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            return {
+              'id': doc.id,
+              'title': data['title'] ?? 'Notification',
+              'message': data['message'] ?? '',
+              'time': DateFormat(
+                'MMM dd, hh:mm a',
+              ).format(data['createdAt'].toDate()),
+              'isRead': data['isRead'] ?? false,
+              'type': data['type'],
+              'bookingId': data['bookingId'],
+              'vehicleId': data['vehicleId'],
+            };
+          }).toList();
+
+      _unreadCount = _notifications.where((n) => !n['isRead']).length;
+    });
+  }
+
+  void _handleNewBookings(QuerySnapshot snapshot) {
+    if (snapshot.docs.isEmpty) return;
+
+    final newBookings = snapshot.docChanges.where(
+      (change) => change.type == DocumentChangeType.added,
+    );
+
+    for (final change in newBookings) {
+      final booking = change.doc.data() as Map<String, dynamic>;
+      _addBookingNotification(booking, change.doc.id);
+    }
+  }
+
+  Future<void> _addBookingNotification(
+    Map<String, dynamic> booking,
+    String bookingId,
+  ) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    // Check if notification already exists
+    final existingNotification =
+        await FirebaseFirestore.instance
+            .collection('notifications')
+            .where('bookingId', isEqualTo: bookingId)
+            .limit(1)
+            .get();
+
+    if (existingNotification.docs.isNotEmpty) return;
+
+    final notification = {
+      'title': 'Booking Confirmed',
+      'message':
+          'Your booking for ${booking['vehicleName']} is confirmed. '
+          'Pickup on ${DateFormat('MMM dd, yyyy').format(booking['pickupDate'].toDate())} '
+          'at ${booking['pickupTime']}',
+      'isRead': false,
+      'userId': user.uid,
+      'type': 'booking_confirmation',
+      'createdAt': Timestamp.now(),
+      'bookingId': bookingId,
+      'vehicleId': booking['vehicleId'],
+    };
+
+    await FirebaseFirestore.instance
+        .collection('notifications')
+        .add(notification);
+  }
+
+  Future<void> _markNotificationAsRead(String notificationId) async {
+    await FirebaseFirestore.instance
+        .collection('notifications')
+        .doc(notificationId)
+        .update({'isRead': true});
+  }
+
+  Future<void> _markAllNotificationsAsRead() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final batch = FirebaseFirestore.instance.batch();
+    final snapshot =
+        await FirebaseFirestore.instance
+            .collection('notifications')
+            .where('userId', isEqualTo: user.uid)
+            .where('isRead', isEqualTo: false)
+            .get();
+
+    for (final doc in snapshot.docs) {
+      batch.update(doc.reference, {'isRead': true});
+    }
+
+    await batch.commit();
   }
 
   void _toggleNotifications() {
     setState(() {
       _showNotifications = !_showNotifications;
+      if (_showNotifications && _unreadCount > 0) {
+        _markAllNotificationsAsRead();
+      }
     });
+  }
+
+  void _handleNotificationTap(Map<String, dynamic> notification) async {
+    // Mark as read if not already
+    if (!notification['isRead']) {
+      await _markNotificationAsRead(notification['id']);
+    }
+
+    // Handle different notification types
+    switch (notification['type']) {
+      case 'booking_confirmation':
+        // Navigate to booking details
+        break;
+      default:
+        // Default behavior
+        break;
+    }
   }
 
   @override
@@ -60,28 +225,45 @@ class _CarRentHomeScreenState extends State<CarRentHomeScreen> {
       body: SafeArea(
         child: Stack(
           children: [
-            Column(
-              children: [
-                HeaderSection(onNotificationPressed: _toggleNotifications),
-                const SizedBox(height: 16),
-                _buildSearchBar(),
-                const SizedBox(height: 16),
-                _buildFilters(),
-                const SizedBox(height: 16),
-                Expanded(child: _buildCarList()),
-              ],
+            SmartRefresher(
+              controller: _refreshController,
+              onRefresh: _refreshNotifications,
+              header: const ClassicHeader(
+                idleText: 'Pull to refresh',
+                releaseText: 'Release to refresh',
+                completeText: 'Refresh complete',
+                refreshingText: 'Refreshing...',
+                failedText: 'Refresh failed',
+              ),
+              child: Column(
+                children: [
+                  HeaderSection(
+                    onNotificationPressed: _toggleNotifications,
+                    unreadCount: _unreadCount,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildSearchBar(),
+                  const SizedBox(height: 16),
+                  _buildFilters(),
+                  const SizedBox(height: 16),
+                  Expanded(child: _buildCarList()),
+                ],
+              ),
             ),
 
-            // Notification Drawer
+            // Notification Panel
             if (_showNotifications)
               Positioned(
-                top: 100, // Adjust based on your header height
+                top: 100,
                 right: 16,
                 child: Material(
                   elevation: 8,
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
                     width: MediaQuery.of(context).size.width * 0.8,
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.of(context).size.height * 0.6,
+                    ),
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -107,20 +289,38 @@ class _CarRentHomeScreenState extends State<CarRentHomeScreen> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.close),
-                              onPressed: _toggleNotifications,
+                            Row(
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.refresh),
+                                  onPressed: _refreshNotifications,
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.close),
+                                  onPressed: _toggleNotifications,
+                                ),
+                              ],
                             ),
                           ],
                         ),
                         const Divider(),
                         const SizedBox(height: 8),
-                        ..._notifications.map(
-                          (notification) => _buildNotificationItem(
-                            notification['title'],
-                            notification['time'],
-                            notification['message'],
-                          ),
+                        Expanded(
+                          child:
+                              _notifications.isEmpty
+                                  ? const Center(
+                                    child: Text('No notifications'),
+                                  )
+                                  : ListView.builder(
+                                    itemCount: _notifications.length,
+                                    itemBuilder: (context, index) {
+                                      final notification =
+                                          _notifications[index];
+                                      return _buildNotificationItem(
+                                        notification,
+                                      );
+                                    },
+                                  ),
                         ),
                       ],
                     ),
@@ -133,33 +333,48 @@ class _CarRentHomeScreenState extends State<CarRentHomeScreen> {
     );
   }
 
-  Widget _buildNotificationItem(String title, String time, String message) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+  Widget _buildNotificationItem(Map<String, dynamic> notification) {
+    return InkWell(
+      onTap: () => _handleNotificationTap(notification),
+      child: Container(
+        color: notification['isRead'] ? Colors.white : Colors.blue[50],
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    notification['title'],
+                    style: TextStyle(
+                      fontWeight:
+                          notification['isRead']
+                              ? FontWeight.normal
+                              : FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-              ),
-              Text(
-                time,
-                style: const TextStyle(color: Colors.grey, fontSize: 12),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(message),
-          const SizedBox(height: 8),
-          const Divider(),
-        ],
+                Text(
+                  notification['time'],
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              notification['message'],
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 8),
+            const Divider(),
+          ],
+        ),
       ),
     );
   }
@@ -362,7 +577,7 @@ class _CarRentHomeScreenState extends State<CarRentHomeScreen> {
                             carData['image_urls'] ??
                                 [carData['image_url'] ?? ''],
                           ),
-                          data: carData, // Pass the actual carData map
+                          data: carData,
                         ),
                   ),
                 );
@@ -428,13 +643,7 @@ class _CarRentHomeScreenState extends State<CarRentHomeScreen> {
                             children: [
                               Row(
                                 children: const [
-                                  Icon(
-                                    Icons.star,
-                                    size: 16,
-                                    color: Colors.black,
-                                  ),
-                                  SizedBox(width: 4),
-                                  Text('4.5'),
+                                  
                                 ],
                               ),
                               const SizedBox(height: 4),
@@ -465,8 +674,13 @@ class _CarRentHomeScreenState extends State<CarRentHomeScreen> {
 
 class HeaderSection extends StatefulWidget {
   final VoidCallback onNotificationPressed;
+  final int unreadCount;
 
-  const HeaderSection({super.key, required this.onNotificationPressed});
+  const HeaderSection({
+    super.key,
+    required this.onNotificationPressed,
+    required this.unreadCount,
+  });
 
   @override
   State<HeaderSection> createState() => _HeaderSectionState();
@@ -499,7 +713,7 @@ class _HeaderSectionState extends State<HeaderSection> {
         }
       }
     } catch (e) {
-      print('Error loading user data: $e');
+      debugPrint('Error loading user data: $e');
     }
   }
 
@@ -523,11 +737,57 @@ class _HeaderSectionState extends State<HeaderSection> {
               ),
               Row(
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.notifications, color: Colors.white),
-                    onPressed: widget.onNotificationPressed,
+                  Stack(
+                    children: [
+                      IconButton(
+                        icon: const Icon(
+                          Icons.notifications,
+                          color: Colors.white,
+                        ),
+                        onPressed:
+                            widget
+                                .onNotificationPressed, // ✅ valid only in State
+                      ),
+                      if (widget.unreadCount > 0)
+                        Positioned(
+                          right: 8,
+                          top: 8,
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 16,
+                              minHeight: 16,
+                            ),
+                            child: Text(
+                              widget.unreadCount.toString(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
+
+                  IconButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => MyBookingsScreen(),
+                        ),
+                      );
+                    },
+                    icon: Icon(Icons.taxi_alert, color: Colors.white),
+                  ),
+                  SizedBox(width: 8),
+
                   GestureDetector(
                     onTap: () {
                       Navigator.push(

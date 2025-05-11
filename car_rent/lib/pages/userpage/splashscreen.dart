@@ -1,93 +1,223 @@
-import 'dart:async';
+import 'package:car_rent/pages/adminpage/bookingm/bookingmanagement.dart';
+import 'package:car_rent/pages/userpage/homescreen.dart';
+import 'package:car_rent/authpag/authscreen.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart'; // 👈 import spinkit
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({Key? key}) : super(key: key);
+  const SplashScreen({super.key});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  double _progress = 0;
-
   @override
   void initState() {
     super.initState();
-    simulateLoading();
+    _checkConnectionAndNavigate();
   }
 
-  void simulateLoading() {
-    Timer.periodic(const Duration(milliseconds: 50), (timer) {
-      if (_progress >= 1) {
-        timer.cancel();
-        // Navigate to home or login screen after loading
-        // Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => HomeScreen()));
-      } else {
-        setState(() {
-          _progress += 0.01;
-        });
+  Future<void> _checkConnectionAndNavigate() async {
+    final connectivityResult = await Connectivity().checkConnectivity();
+
+    if (connectivityResult == ConnectivityResult.none) {
+      _showNoInternetDialog();
+      return;
+    }
+
+    await Future.delayed(const Duration(seconds: 2));
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      _goTo(const Authscreen());
+      return;
+    } else {
+      final uid = user.uid;
+      final firestore = FirebaseFirestore.instance;
+      try {
+        final userDoc = await firestore.collection('users').doc(uid).get();
+        if (userDoc.exists) {
+          _goTo(const CarRentHomeScreen());
+          return;
+        }
+
+        final employeeDoc =
+            await firestore.collection('employees').doc(uid).get();
+        print(uid);
+        if (employeeDoc.exists) {
+          _goTo(const AdminDashboardScreen());
+          return;
+        }
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const Authscreen()),
+        );
+      } catch (e) {
+        _showErrorDialog(
+          
+        "Due To Connection Issue.Please Try Again by Clicking TRY_AGAIN and Check ur Internet Connection Or Reopen Application Again. Thank you", 
+        );
       }
-    });
+    }
   }
+
+  void _goTo(Widget screen) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => screen),
+    );
+  }
+
+  void _showNoInternetDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (_) => AlertDialog(
+            backgroundColor: const Color(0xFFE3F2FD),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+            ),
+            title: const Row(
+              children: [
+                Icon(Icons.wifi_off, color: Colors.redAccent),
+                SizedBox(width: 10),
+                Text(
+                  "No Internet Connection",
+                  style: TextStyle(
+                    color: Colors.black87,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            content: const Text(
+              "Oops! Looks like you're offline.\nPlease connect to Wi-Fi or mobile data and try again.",
+              style: TextStyle(color: Colors.black87, fontSize: 16),
+            ),
+            actions: [
+              TextButton.icon(
+                icon: const Icon(Icons.refresh, color: Colors.blueAccent),
+                label: const Text(
+                  "RETRY",
+                  style: TextStyle(color: Colors.blueAccent),
+                ),
+                onPressed: () {
+                  Navigator.pop(context);
+                  _checkConnectionAndNavigate();
+                },
+              ),
+            ],
+          ),
+    );
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (_) => AlertDialog(
+            backgroundColor: const Color(0xFFFFEBEE),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+            ),
+            title: const Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.deepOrange),
+                SizedBox(width: 10),
+                Text(
+                  "Connection Error",
+                  style: TextStyle(
+                    color: Colors.black87,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            content: Text(
+              message,
+              style: const TextStyle(color: Colors.black87, fontSize: 16),
+            ),
+            actions: [
+              TextButton.icon(
+                icon: const Icon(Icons.refresh, color: Colors.deepOrange),
+                label: const Text(
+                  "TRY AGAIN",
+                  style: TextStyle(color: Colors.deepOrange),
+                ),
+                onPressed: () {
+                  Navigator.pop(context);
+                  _checkConnectionAndNavigate();
+                },
+              ),
+            ],
+          ),
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0D1A73), // dark blue
-      body: SafeArea(
+    return const Scaffold(
+      backgroundColor: Color(0xFF1A237E),
+      body: Center(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Spacer(),
-            const CircleAvatar(
-              radius: 50,
-              backgroundColor: Colors.black, // Placeholder logo
-              // backgroundImage: AssetImage('assets/logo.png'), // Use this if you have a real logo
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'Mohammed Vehicle Rentals',
-              style: TextStyle(
-                fontSize: 20,
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Your Trusted Partner in Transportation',
-              style: TextStyle(fontSize: 14, color: Colors.white70),
-            ),
-            const SizedBox(height: 30),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40),
-              child: LinearProgressIndicator(
-                value: _progress,
-                backgroundColor: Colors.white30,
-                color: Colors.white,
-                minHeight: 5,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              "Loading... ${(_progress * 100).toInt()}%",
-              style: const TextStyle(color: Colors.white70),
-            ),
-            const Spacer(),
-            const Padding(
-              padding: EdgeInsets.only(bottom: 10),
+              padding: EdgeInsets.only(top: 100, left: 10),
               child: Column(
                 children: [
                   Text(
-                    "Serving Ethiopia Since 2010",
-                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                    'Mohammed Vehicle Rentals',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 43,
+                    ),
                   ),
-                  SizedBox(height: 5),
+                  SizedBox(height: 8),
                   Text(
-                    "© 2024 Mohammed Vehicle Rentals. All rights reserved.",
-                    style: TextStyle(color: Colors.white38, fontSize: 10),
-                    textAlign: TextAlign.center,
+                    'Your Trusted Partner In Transportation',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w100,
+                      fontSize: 22,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // 👇 This is your centered loading animation
+            SpinKitThreeBounce(color: Colors.white, size: 40.0),
+
+            Padding(
+              padding: EdgeInsets.only(bottom: 40),
+              child: Column(
+                children: [
+                  Text(
+                    'Your Trusted Partner In Transportation',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w100,
+                      fontSize: 14,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    '2025 Mohammmed Vehicle Rentals Transportation',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w100,
+                      fontSize: 14,
+                    ),
                   ),
                 ],
               ),

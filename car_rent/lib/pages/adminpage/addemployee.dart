@@ -20,7 +20,6 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
 
   String selectedRole = 'Admin';
   final List<String> roles = ['Admin', 'Employee', 'Manager'];
-
   bool _isLoading = false;
 
   void _resetForm() {
@@ -55,23 +54,33 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
     });
 
     try {
-      // Create user in Firebase Authentication
+      // Step 1: Save current admin info (to log back in)
+      final User? currentAdmin = _auth.currentUser;
+      final String? adminEmail = currentAdmin?.email;
+      const String adminPassword = 'yourAdminPassword'; // Replace this properly
+
+      if (adminEmail == null) {
+        throw Exception(
+          "Admin not logged in. Can't re-login after employee creation.",
+        );
+      }
+
+      // Step 2: Create new employee account (Firebase switches to this account)
       UserCredential userCredential = await _auth
           .createUserWithEmailAndPassword(email: email, password: password);
 
-      // Add user data to Firestore 'employees' collection
-      await _firestore
-          .collection('employees')
-          .doc(userCredential.user!.uid)
-          .set({
-            'uid': userCredential.user!.uid,
-            'first_name': firstName,
-            'last_name': lastName,
-            'email': email,
-            'role': role  ,
-            'created_at': FieldValue.serverTimestamp(),
-          });
+      // Step 3: Add to Firestore
+      await _firestore.collection('employees').doc(userCredential.user!.uid).set({
+        'uid': userCredential.user!.uid,
+        'first_name': firstName,
+        'last_name': lastName,
+        'email': email,
+        'role': role,
+        'created_at': FieldValue.serverTimestamp(),
+      });
 
+
+      // Step 6: Done!
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Employee added successfully')),
       );
@@ -98,10 +107,8 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
       backgroundColor: const Color(0xFFF0F2F5),
       appBar: AppBar(
         leading: IconButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          icon: Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.arrow_back),
         ),
       ),
       body: Center(
@@ -127,6 +134,7 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                 ),
                 const SizedBox(height: 24),
 
+                // First and last name fields
                 Row(
                   children: [
                     Expanded(
@@ -151,6 +159,8 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
+
+                // Email and role dropdown
                 Row(
                   children: [
                     Expanded(
@@ -186,6 +196,8 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
+
+                // Password field
                 TextField(
                   controller: passwordController,
                   obscureText: true,
@@ -196,6 +208,7 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                 ),
                 const SizedBox(height: 24),
 
+                // Buttons
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [

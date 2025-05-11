@@ -1,3 +1,4 @@
+import 'package:car_rent/pages/adminpage/bookingm/bookingmanagement.dart';
 import 'package:car_rent/pages/adminpage/vehicles/managevehicle.dart';
 import 'package:car_rent/pages/userpage/homescreen.dart';
 import 'package:flutter/material.dart';
@@ -182,7 +183,7 @@ class _LoginScreenState extends State<Loginscreen> {
         // User is an employee/admin
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const VehicleManagementScreen()),
+          MaterialPageRoute(builder: (_) => AdminDashboardScreen()),
         );
         return;
       }

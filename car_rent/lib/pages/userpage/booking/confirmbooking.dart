@@ -1,9 +1,6 @@
 import 'package:car_rent/pages/userpage/booking/payment/payment.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-
 
 class BookingScreen extends StatefulWidget {
   final String vehicleId;
@@ -33,32 +30,56 @@ class _BookingScreenState extends State<BookingScreen> {
   bool _isLoading = false;
 
   Future<void> _selectDate(BuildContext context, bool isPickup) async {
+    DateTime today = DateTime.now();
+
+    // Ensure initialDate is not Sunday
+    DateTime initialDate = today;
+    if (today.weekday == DateTime.sunday) {
+      initialDate = today.add(const Duration(days: 1)); // push to Monday
+    }
+
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 30)),
+      initialDate: initialDate,
+      firstDate: today,
+      lastDate: today.add(const Duration(days: 365)),
       selectableDayPredicate: (DateTime date) {
         return date.weekday >= DateTime.monday &&
             date.weekday <= DateTime.saturday;
       },
     );
+
     if (picked != null) {
       setState(() {
         if (isPickup) {
           _pickupDate = picked;
+          _pickupTime ??= TimeOfDay.now();
         } else {
           _returnDate = picked;
+          _returnTime ??= TimeOfDay.now();
         }
       });
     }
   }
 
+
   Future<void> _selectTime(BuildContext context, bool isPickup) async {
+    final initialTime =
+        isPickup
+            ? (_pickupTime ?? TimeOfDay.now())
+            : (_returnTime ?? TimeOfDay.now());
+
     final TimeOfDay? picked = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.now(),
+      initialTime: initialTime,
+      builder: (BuildContext context, Widget? child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: child!,
+        );
+      },
     );
+
     if (picked != null) {
       setState(() {
         if (isPickup) {
@@ -81,15 +102,6 @@ class _BookingScreenState extends State<BookingScreen> {
       return;
     }
 
-    if (_returnDate!.isBefore(_pickupDate!) ||
-        (_returnDate == _pickupDate && _returnTime!.hour < _pickupTime!.hour)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Return must be after pickup')),
-      );
-      return;
-    }
-
-    // Combine date and time
     final pickupDateTime = DateTime(
       _pickupDate!.year,
       _pickupDate!.month,
@@ -106,72 +118,107 @@ class _BookingScreenState extends State<BookingScreen> {
       _returnTime!.minute,
     );
 
-    // Navigate to payment screen
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder:
-            (context) => TelebinPaymentScreen(
-              totalAmount: _calculateTotalCost(),
-              pickupDate: pickupDateTime,
-              returnDate: returnDateTime,
-              vehicleId: widget.vehicleId,
-              vehicleName: widget.vehicleName,
-              vehicleType: widget.vehicleType,
-              imageUrl: widget.imageUrl,
-              rate: widget.rate,
-            ),
-      ),
-    );
+    if (returnDateTime.isBefore(pickupDateTime)) {
+      // Fixed typo here
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Return must be after pickup')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder:
+              (context) => TelebinPaymentScreen(
+                totalAmount: _calculateTotalCost(),
+                pickupDate: pickupDateTime,
+                returnDate: returnDateTime,
+                vehicleId: widget.vehicleId,
+                vehicleName: widget.vehicleName,
+                vehicleType: widget.vehicleType,
+                imageUrl: widget.imageUrl,
+                rate: widget.rate,
+              ),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   double _calculateTotalCost() {
+    if (_pickupDate == null || _returnDate == null) return 0.0;
     final days = _returnDate!.difference(_pickupDate!).inDays + 1;
     return days * double.parse(widget.rate);
   }
 
   Widget _buildDatePickerButton(String label, DateTime? date, bool isPickup) {
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        shape: RoundedRectangleBorder(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque, // Added this to prevent gesture issues
+      onTap: () => _selectDate(context, isPickup),
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: Colors.grey.shade300),
           borderRadius: BorderRadius.circular(8),
-          side: BorderSide(color: Colors.grey.shade300),
         ),
-      ),
-      onPressed: () => _selectDate(context, isPickup),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            date == null
-                ? 'Select $label Date'
-                : DateFormat('EEE, MMM d').format(date),
-          ),
-          const Icon(Icons.calendar_today, size: 18),
-        ],
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              date == null
+                  ? 'Select $label Date'
+                  : DateFormat('EEE, MMM d, yyyy').format(date),
+              style: TextStyle(
+                fontSize: 16,
+                color: date == null ? Colors.grey : Colors.black87,
+              ),
+            ),
+            const Icon(Icons.calendar_today, size: 18, color: Colors.blueGrey),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildTimePickerButton(String label, TimeOfDay? time, bool isPickup) {
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        shape: RoundedRectangleBorder(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque, // Added this to prevent gesture issues
+      onTap: () => _selectTime(context, isPickup),
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: Colors.grey.shade300),
           borderRadius: BorderRadius.circular(8),
-          side: BorderSide(color: Colors.grey.shade300),
         ),
-      ),
-      onPressed: () => _selectTime(context, isPickup),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(time == null ? 'Select $label Time' : time.format(context)),
-          const Icon(Icons.access_time, size: 18),
-        ],
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              time == null ? 'Select $label Time' : time.format(context),
+              style: TextStyle(
+                fontSize: 16,
+                color: time == null ? Colors.grey : Colors.black87,
+              ),
+            ),
+            const Icon(Icons.access_time, size: 18, color: Colors.blueGrey),
+          ],
+        ),
       ),
     );
   }
@@ -179,7 +226,9 @@ class _BookingScreenState extends State<BookingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
+        backgroundColor: Colors.white,
         title: const Text('Book Vehicle'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -191,7 +240,6 @@ class _BookingScreenState extends State<BookingScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Vehicle Preview
             Container(
               height: 200,
               width: double.infinity,
@@ -222,7 +270,6 @@ class _BookingScreenState extends State<BookingScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Pickup Details
             const Text(
               'Pickup Details',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -231,9 +278,8 @@ class _BookingScreenState extends State<BookingScreen> {
             _buildDatePickerButton('Pickup', _pickupDate, true),
             const SizedBox(height: 8),
             _buildTimePickerButton('Pickup', _pickupTime, true),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
 
-            // Return Details
             const Text(
               'Return Details',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -242,9 +288,8 @@ class _BookingScreenState extends State<BookingScreen> {
             _buildDatePickerButton('Return', _returnDate, false),
             const SizedBox(height: 8),
             _buildTimePickerButton('Return', _returnTime, false),
-            const SizedBox(height: 8),
+            const SizedBox(height: 24),
 
-            // Confirm Button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
