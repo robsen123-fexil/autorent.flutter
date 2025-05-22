@@ -2,24 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 
-class UserFeedbackScreen extends StatelessWidget {
-  const UserFeedbackScreen({super.key});
+class ReviewsScreen extends StatelessWidget {
+  const ReviewsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        title: const Text("All Vehicle Reviews" , style: TextStyle(color: Colors.white),),
+        centerTitle: true,
+        backgroundColor: const Color.fromARGB(255, 6, 78, 133),
         leading: IconButton(
           onPressed: () {
             Navigator.pop(context);
           },
-          icon: Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
         ),
-        title: const Text(
-          'Customer Feedback',
-          style: TextStyle(color: Colors.white),
-        ),
-        backgroundColor: Colors.indigo[900],
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream:
@@ -33,76 +31,60 @@ class UserFeedbackScreen extends StatelessWidget {
           }
 
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text('No customer feedback yet'));
+            return const Center(child: Text("No reviews found 😶"));
           }
 
+          final reviews = snapshot.data!.docs;
+
           return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: snapshot.data!.docs.length,
+            itemCount: reviews.length,
             itemBuilder: (context, index) {
-              final doc = snapshot.data!.docs[index];
-              final data = doc.data() as Map<String, dynamic>?;
+              final reviewDoc = reviews[index];
+              final rating = reviewDoc['rating'] ?? 0;
+              final reviewText = reviewDoc['review'] ?? 'No review';
+              final vehicleName = reviewDoc['vehicleName'] ?? 'Unknown';
+              final timestamp = reviewDoc['createdAt'] as Timestamp;
+              final date = DateFormat(
+                'dd MMM yyyy, hh:mm a',
+              ).format(timestamp.toDate());
 
-              if (data == null) return const SizedBox.shrink();
-
-              return _buildFeedbackCard(data);
+              return Card(
+                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                elevation: 3,
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.teal,
+                    child: Text(
+                      rating.toString(),
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                  title: Text(
+                    vehicleName,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(reviewText),
+                      const SizedBox(height: 4),
+                      Text(
+                        date,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
             },
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildFeedbackCard(Map<String, dynamic> data) {
-    final dateFormat = DateFormat('MMM dd, yyyy');
-
-    final vehicleName = data['vehicleName'] ?? 'Unknown Vehicle';
-    final userName = data['userName'] ?? 'Anonymous';
-    final createdAt =
-        data['createdAt'] is Timestamp
-            ? (data['createdAt'] as Timestamp).toDate()
-            : null;
-    final reviewText = data['review'] ?? 'No review text';
-    final rating = (data['rating'] is num) ? data['rating'].toInt() : 0;
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  vehicleName,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Row(
-                  children: List.generate(5, (starIndex) {
-                    return Icon(
-                      starIndex < rating ? Icons.star : Icons.star_border,
-                      color: Colors.amber,
-                      size: 20,
-                    );
-                  }),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text('By: $userName'),
-            if (createdAt != null) Text('On: ${dateFormat.format(createdAt)}'),
-            const SizedBox(height: 8),
-            Text(
-              reviewText,
-              style: const TextStyle(fontStyle: FontStyle.italic),
-            ),
-          ],
-        ),
       ),
     );
   }

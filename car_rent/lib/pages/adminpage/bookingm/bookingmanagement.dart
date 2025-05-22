@@ -186,7 +186,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         () => Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => const UserFeedbackScreen(),
+                            builder: (_) => const ReviewsScreen(),
                           ),
                         ),
                   )
